@@ -1,0 +1,7 @@
+[
+  {"name": "Thandi Nkosi", "age": 30, "gross_monthly": 25000, "sdl_exempt": false},
+  {"name": "Sipho Dlamini", "age": 45, "gross_monthly": 42000, "sdl_exempt": false},
+  {"name": "Sipho Khumalo", "age": 28, "gross_monthly": 18500, "sdl_exempt": false},
+  {"name": "Lerato Mokoena", "age": 23, "gross_monthly": 8000, "sdl_exempt": false},
+  {"name": "Johan van der Merwe", "age": 67, "gross_monthly": 31000, "sdl_exempt": false}
+]

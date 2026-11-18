@@ -1,0 +1,244 @@
+[
+  {
+    "id": "uif-possessive",
+    "reply": "Thandi Nkosi's UIF is R177.12 a month.",
+    "failures": [],
+    "model_calls": 1,
+    "tokens_in": 548,
+    "tokens_out": 43
+  },
+  {
+    "id": "paye",
+    "reply": "Thandi Nkosi's PAYE is R3,381.00 a month.",
+    "failures": [],
+    "model_calls": 1,
+    "tokens_in": 548,
+    "tokens_out": 43
+  },
+  {
+    "id": "tax-word",
+    "reply": "Thandi Nkosi's PAYE is R3,381.00 a month.",
+    "failures": [],
+    "model_calls": 1,
+    "tokens_in": 548,
+    "tokens_out": 32
+  },
+  {
+    "id": "take-home",
+    "reply": "Thandi Nkosi's net pay is R21,441.88 a month.",
+    "failures": [],
+    "model_calls": 1,
+    "tokens_in": 549,
+    "tokens_out": 45
+  },
+  {
+    "id": "earn",
+    "reply": "Sipho Dlamini's gross pay is R42,000.00 a month.",
+    "failures": [],
+    "model_calls": 1,
+    "tokens_in": 549,
+    "tokens_out": 34
+  },
+  {
+    "id": "sdl",
+    "reply": "Thandi Nkosi's SDL (paid by the employer) is R250.00 a month.",
+    "failures": [],
+    "model_calls": 1,
+    "tokens_in": 548,
+    "tokens_out": 43
+  },
+  {
+    "id": "age",
+    "reply": "Lerato Mokoena is 23.",
+    "failures": [],
+    "model_calls": 1,
+    "tokens_in": 546,
+    "tokens_out": 38
+  },
+  {
+    "id": "two-figures",
+    "reply": "Thandi Nkosi's PAYE is R3,381.00 and UIF is R177.12 a month.",
+    "failures": [],
+    "model_calls": 1,
+    "tokens_in": 549,
+    "tokens_out": 34
+  },
+  {
+    "id": "tax-numbers",
+    "reply": "For Thandi Nkosi at age 30 on R25,000.00 gross per month: PAYE R3,381.00, UIF R177.12, net pay R21,441.88.",
+    "failures": [],
+    "model_calls": 1,
+    "tokens_in": 548,
+    "tokens_out": 43
+  },
+  {
+    "id": "payslip",
+    "reply": "For Thandi Nkosi at age 30 on R25,000.00 gross per month: PAYE R3,381.00, UIF R177.12, net pay R21,441.88.",
+    "failures": [],
+    "model_calls": 1,
+    "tokens_in": 548,
+    "tokens_out": 38
+  },
+  {
+    "id": "clarify-then-name",
+    "reply": "Sipho Khumalo's gross pay is R18,500.00 a month.",
+    "failures": [],
+    "model_calls": 3,
+    "tokens_in": 1726,
+    "tokens_out": 110
+  },
+  {
+    "id": "follow-up-figure",
+    "reply": "Her PAYE is R3,381.00 a month.",
+    "failures": [],
+    "model_calls": 3,
+    "tokens_in": 1875,
+    "tokens_out": 122
+  },
+  {
+    "id": "follow-up-person",
+    "reply": "For Sipho Khumalo at age 28 on R18,500.00 gross per month: PAYE R1,845.00, UIF R177.12, net pay R16,477.88.",
+    "failures": [
+      "should not contain 'R16,477.88'"
+    ],
+    "model_calls": 2,
+    "tokens_in": 1130,
+    "tokens_out": 90
+  },
+  {
+    "id": "count",
+    "reply": "There are 5 employees.",
+    "failures": [],
+    "model_calls": 1,
+    "tokens_in": 547,
+    "tokens_out": 33
+  },
+  {
+    "id": "most-gross",
+    "reply": "Sipho Dlamini earns the most: R42,000.00 a month.",
+    "failures": [],
+    "model_calls": 1,
+    "tokens_in": 545,
+    "tokens_out": 33
+  },
+  {
+    "id": "most-paye",
+    "reply": "Sipho Dlamini pays the most PAYE: R8,304.75 a month.",
+    "failures": [],
+    "model_calls": 1,
+    "tokens_in": 547,
+    "tokens_out": 33
+  },
+  {
+    "id": "least-net",
+    "reply": "Lerato Mokoena takes home the least: R7,920.00 a month.",
+    "failures": [],
+    "model_calls": 1,
+    "tokens_in": 546,
+    "tokens_out": 32
+  },
+  {
+    "id": "most-sdl",
+    "reply": "Sipho Dlamini has the highest SDL (paid by the employer): R420.00 a month.",
+    "failures": [],
+    "model_calls": 1,
+    "tokens_in": 547,
+    "tokens_out": 33
+  },
+  {
+    "id": "total-paye",
+    "reply": "For 5 employees, total monthly PAYE is R17,658.00.",
+    "failures": [],
+    "model_calls": 1,
+    "tokens_in": 547,
+    "tokens_out": 25
+  },
+  {
+    "id": "filter-age",
+    "reply": "Johan van der Merwe (age 67) is the only employee over 60.",
+    "failures": [],
+    "model_calls": 2,
+    "tokens_in": 1377,
+    "tokens_out": 75
+  },
+  {
+    "id": "list",
+    "reply": "There are 5 employees (gross per month, highest first): Sipho Dlamini (age 45, R42,000.00); Johan van der Merwe (age 67, R31,000.00); Thandi Nkosi (age 30, R25,000.00); Sipho Khumalo (age 28, R18,500.00); Lerato Mokoena (age 23, R8,000.00).",
+    "failures": [],
+    "model_calls": 1,
+    "tokens_in": 544,
+    "tokens_out": 33
+  },
+  {
+    "id": "what-if",
+    "reply": "At age 66, Thandi Nkosi's PAYE would be R2,567.25 a month (nothing was changed).",
+    "failures": [],
+    "model_calls": 1,
+    "tokens_in": 552,
+    "tokens_out": 44
+  },
+  {
+    "id": "what-if-follow-up",
+    "reply": "For Thandi Nkosi at age 66 on R25,000.00 gross per month (what-if, nothing was changed): PAYE R2,567.25, UIF R177.12, net pay R22,255.63.",
+    "failures": [],
+    "model_calls": 2,
+    "tokens_in": 1130,
+    "tokens_out": 85
+  },
+  {
+    "id": "anonymous",
+    "reply": "PAYE would be R11,075.58 a month (age 27, R50,000.00 gross).",
+    "failures": [],
+    "model_calls": 0,
+    "tokens_in": 0,
+    "tokens_out": 0
+  },
+  {
+    "id": "ambiguous",
+    "reply": "Which Sipho? Sipho Dlamini or Sipho Khumalo?",
+    "failures": [],
+    "model_calls": 2,
+    "tokens_in": 1151,
+    "tokens_out": 75
+  },
+  {
+    "id": "typo",
+    "reply": "Which employee are you referring to? Thandi Nkosi?",
+    "failures": [],
+    "model_calls": 2,
+    "tokens_in": 1157,
+    "tokens_out": 60
+  },
+  {
+    "id": "unknown",
+    "reply": "I couldn’t find an employee named “Bob”. Could you double‑check the name?",
+    "failures": [],
+    "model_calls": 2,
+    "tokens_in": 1138,
+    "tokens_out": 75
+  },
+  {
+    "id": "change-declined",
+    "reply": "Cancelled. Nothing was changed.",
+    "failures": [],
+    "model_calls": 1,
+    "tokens_in": 676,
+    "tokens_out": 49
+  },
+  {
+    "id": "age-declined",
+    "reply": "Cancelled. Nothing was changed.",
+    "failures": [],
+    "model_calls": 1,
+    "tokens_in": 675,
+    "tokens_out": 53
+  },
+  {
+    "id": "vague-change",
+    "reply": "What would you like to change about Sipho?",
+    "failures": [],
+    "model_calls": 1,
+    "tokens_in": 670,
+    "tokens_out": 27
+  }
+]

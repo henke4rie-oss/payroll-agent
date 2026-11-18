@@ -1,0 +1,7 @@
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+approved_payslips.json
+audit_log.json
+evals/results/
