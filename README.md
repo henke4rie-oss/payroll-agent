@@ -1,8 +1,37 @@
 # payroll-agent
 
-A small AI agent that answers payroll questions for a South African small business. It looks up employees, calculates PAYE / UIF / net pay using the SARS 2026/27 tax tables, explains the tax behind a payslip, and can add, edit, rename and remove employees. Every change needs a human to approve it first and is written to an audit log.
+An AI assistant for South African small-business payroll. You ask in plain language and it answers with exact figures from the SARS 2026/27 tax tables. It can also change employee records, but only after a person approves each change, and every approved change is written to an audit log.
 
-It sits on top of the tax engine from my [PayrollZA](https://github.com/henke4rie-oss/PayrollZA) project (`payroll_agent/engine.py` is a copy of that engine).
+It is a spin-off of my [PayrollZA](https://github.com/henke4rie-oss/PayrollZA) project (`payroll_agent/engine.py` is a copy of that tax engine).
+
+```
+You: whats thandis uif
+Agent: Thandi Nkosi's UIF is R177.12 a month.
+
+You: who pays the most paye
+Agent: Sipho Dlamini pays the most PAYE: R8,304.75 a month.
+
+You: what if she was 66?
+Agent: At age 66, Thandi Nkosi's PAYE would be R2,567.25 a month (nothing was changed).
+
+You: set sipho dlamini's salary to 45000
+
+Please confirm: Change Sipho Dlamini's gross_monthly: R42,000.00 -> R45,000.00. Net pay would go from R33,518.13 to R35,547.30.
+Approve? [y/N] n
+Agent: Cancelled. Nothing was changed.
+```
+
+## Results
+
+All numbers below are measured on this project (logs and `evals/`), not estimates.
+
+| | Result |
+|---|---|
+| Live eval (30 real phrasings) | **28/30** on the latest run, 29/30 before the redesign (see "Known limitations") |
+| Unit tests | **93**, no API key needed |
+| Input tokens per simple question | about **3,100** over 2 model calls at first, about **770** over 1 call now (average of the one-call eval cases) |
+| Reply time | typically **0.4 to 0.7 s** per model call on Groq. On the free NVIDIA endpoint I used first, one question took 174 s (two 60 s timeouts plus a slow third attempt). Most of that gain is the provider, not my code. |
+| `agent.py` | about 620 lines of phrase-matching rules replaced by about 300 lines |
 
 ## Why an agent and not a workflow?
 
@@ -10,19 +39,28 @@ A fixed workflow or form is the right tool for a routine payroll run. An agent e
 
 ## How it works
 
-1. The user types a request
-2. The model turns it into a tool call with structured arguments: which person, which figures (`fields`), which period, or which team-wide answer (`team_pay`)
-3. My code runs the tool, which uses the deterministic engine for every number
-4. For clear read-only results, my code writes the reply from the tool's arguments and numbers, with no second model call; for changes, errors and "why" questions, the result goes back to the model
-5. This repeats until there is an answer (maximum 6 steps)
+```mermaid
+flowchart LR
+    U["User question"] --> M["LLM picks a tool and its arguments"]
+    M --> T["Tools: employee_pay, team_pay, change_employee"]
+    T --> E["Tax engine: exact Decimal maths"]
+    E --> T
+    T -->|"read-only result"| R["Code writes the reply"]
+    T -->|"a change"| H{"Person approves?"}
+    H -->|"yes"| S[("Save and audit log")]
+    H -->|"no"| C["Cancelled, nothing changed"]
+    T -->|"error or a why question"| M
+```
 
-The model decides *what was asked* (it is good with language: "thandis uif", "tax numbers", "who takes home the least"), and code decides *what is true* (the numbers, the wording of figures, the approval check). There is no phrase-matching in code to maintain, so a new phrasing does not need a new rule.
+1. The user types a request.
+2. The model turns it into a tool call with structured arguments: which person, which figures (`fields`), which period, or which team-wide answer (`team_pay`).
+3. My code runs the tool, which uses the deterministic engine for every number.
+4. For clear read-only results, my code writes the reply from the tool's arguments and numbers, with no second model call. For changes, errors and "why" questions, the result goes back to the model.
+5. This repeats until there is an answer (maximum 6 steps).
+
+The model decides *what was asked* (it is good with language: "thandis uif", "tax numbers", "who takes home the least"). Code decides *what is true* (the numbers, the wording of figures, the approval check). The first version guessed intent with hand-written phrase rules, and every new phrasing broke it. I replaced those with structured tool arguments, so a new phrasing doesn't need a new rule.
 
 Salaries can be quoted per month, year, week or day, and the answer can be shown in a different period. A daily rate without a work schedule makes the tool return an error, so the model asks for the number of paid workdays per week.
-
-### Evaluation
-
-`python -m evals.run` runs 30 real phrasings (typos, possessives, follow-ups, rankings, what-ifs, declined changes) against the real model and grades each reply for the right figures, the wrong figures that must not appear, and invented amounts. Results are in `evals/results/` and the first baseline is in `evals/baseline.json`. It uses real tokens (about 30k per run), so it is run on demand, not as part of `pytest`.
 
 ### Tools
 
@@ -34,18 +72,22 @@ Salaries can be quoted per month, year, week or day, and the answer can be shown
 
 Under these three sit the small functions in `tools.py` (lookup, payslip, update, add, rename, remove). They are what the tests exercise directly and what keeps each rule in one place.
 
+### Evaluation
+
+`python -m evals.run` runs 30 real phrasings (typos, possessives, follow-ups, rankings, what-ifs, declined changes) against the live model. Each reply is graded for the figures it must contain, the figures it must not contain, and invented amounts. Results are saved to `evals/results/`, and the baseline from before the redesign is in `evals/baseline.json`. It uses real tokens (about 30k per run) and paces itself under the free-tier limit (`EVAL_TPM`), so it is run on demand, not as part of `pytest`.
+
 ## Design decisions
 
 - **The model never does maths.** All money calculations use exact `Decimal` arithmetic in the engine.
-- **Numbers come from the engine, not the model.** The final payslip figures are calculated and attached by code.
+- **Numbers come from the engine, not the model.** The figures in a reply are calculated and attached by code.
 - **Human-in-the-loop on every change.** The approval check is in the tool code, so the model cannot skip it. The person sees a before and after (including the net pay effect) and nothing is saved unless they type `y`.
-- **Tools take names and values only.** Payslips and totals are recalculated in code, so the model can't get an invented number approved.
+- **Tools take names, figures and values only.** Payslips and totals are recalculated in code, so the model can't get an invented number approved.
 - **Risky actions need the exact full name.** Rename and remove refuse partial names, so "Sipho" can never delete the wrong Sipho.
 - **Typos are caught, not guessed.** A not-found error suggests close names (difflib) and the prompt tells the model to ask the user which one they meant.
 - **Input validation.** Names are tidied (extra spaces) and limited to letters, spaces, apostrophes, hyphens and full stops. Duplicate names are refused, ignoring case. Ages must be whole numbers and the engine rejects impossible ages. Salaries must be above zero.
-- **"What if" is not a change.** Questions like "what would her pay be at 66?" use the calculation tool and never touch the data.
+- **"What if" is not a change.** Questions like "what would her pay be at 66?" use the read-only tool and never touch the data.
 - **Audit log.** Every approved change is recorded with a timestamp.
-- **Step limit and retries.** A confused model can't loop forever, and temporary API errors (rate limits, overload) are retried with a growing wait.
+- **Step limit and retries.** A confused model can't loop forever, and temporary API errors (rate limits, overload, timeouts) are retried with a growing wait.
 - **Layers are separate files.** `engine.py` (tax maths), `store.py` (data), `tools.py` (what the agent can do), `agent.py` (the loop), `llm.py` (the only file that knows about the model provider). Tests use a scripted fake model, so they need no API key.
 
 ## Setup
@@ -75,16 +117,18 @@ Things to try:
 python -m pytest
 ```
 
-The tests cover the tax calculations (expected values worked out by hand from the SARS table), every tool, the approval gates, typo and validation edge cases, the step limit, unknown tool requests and the retry logic. They use a fake model, so they do not test live model behaviour.
+The 93 tests cover the tax calculations (expected values worked out by hand from the SARS table), every tool, the approval gates, typo and validation edge cases, the step limit, unknown tool requests and the retry logic. They use a fake model, so they do not test live model behaviour. That is what the eval is for.
 
-## Limitations
+## Known limitations
 
-- Conversation history is retained for the current CLI session (up to 10 exchanges); restarting clears it
-- Employees are a small fake JSON file, and approved edits are written straight to it (no database, no concurrent-edit protection)
+- **The live eval is not perfect, and it varies between runs.** The latest full run scored 28/30 (29/30 before the redesign). One or two cases change from run to run, because the model (`gpt-oss-20b`) sometimes leaves `fields` empty. In the latest run the failing cases were `take-home` and `earn`: both returned the full payslip instead of the single figure asked for. The figures were correct, and no case invented an amount.
+- **That variation is the model, not the rate limit.** Groq's free-tier rate limit returned some 429 responses during eval runs, but the retries absorbed them and they caused no failures.
+- **The redesign did not raise the score.** It removed the phrase-matching code, fixed follow-up questions (such as "and sipho khumalo?" after a PAYE question) and made the behaviour measurable, at about the same accuracy.
+- The agent keeps the last 4 exchanges of the current CLI session; restarting clears it.
+- Employees are a small fake JSON file, and approved edits are written straight to it (no database, no concurrent-edit protection).
 - Age is editable for demo purposes. A real system would derive age from the ID number or birthdate.
-- PAYE is a simple monthly annualised calculation (no pension, medical credits or ETI)
-- No authentication or roles: whoever runs the program can approve
-- Behaviour with the live model depends on the model version and prompt. Tests do not cover this yet.
+- PAYE is a simple monthly annualised calculation (no pension, medical credits or ETI).
+- No authentication or roles: whoever runs the program can approve.
 
 ## What would break first at scale
 
@@ -94,12 +138,11 @@ The tests cover the tax calculations (expected values worked out by hand from th
 
 ## Roadmap
 
-- Conversation memory for follow-up questions
-- An evaluation script that runs real questions against the live model and checks the tools it chose
-- Inventory tracking and invoicing tools behind a router agent
+- Run the eval several times per model and report a range, then try a stronger model through `LLM_MODEL`
+- Add a worked example to the tool descriptions, to reduce empty `fields`
+- Memory that survives restarts (saved conversation facts)
+- Retrieval over SARS guidance documents, so rule questions can be answered with citations
 
 ## AI tools used
 
-> EDIT THIS BEFORE SUBMITTING: say which AI tools you used and what you personally changed, ran and checked.
-
-This project was built with help from Claude (Anthropic). I reviewed the code and tests and can explain how each part works.
+I built this with Claude Code (Anthropic), which wrote most of the code. It started as my idea for a basic command-line tax application, which became PayrollZA and then this agent. I directed the work, tested it live against the real model, chose between the trade-offs, and am working through the code so I can explain each part.
