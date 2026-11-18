@@ -31,7 +31,7 @@ All numbers below are measured on this project (logs and `evals/`), not estimate
 | Unit tests | **93**, no API key needed |
 | Input tokens per simple question | about **3,100** over 2 model calls at first, about **770** over 1 call now (average of the one-call eval cases) |
 | Reply time | typically **0.4 to 0.7 s** per model call on Groq. On the free NVIDIA endpoint I used first, one question took 174 s (two 60 s timeouts plus a slow third attempt). Most of that gain is the provider, not my code. |
-| `agent.py` | about 620 lines of phrase-matching rules replaced by about 300 lines |
+| `agent.py` | about 600 lines (mostly phrase-matching rules) replaced by about 300 lines |
 
 ## Why an agent and not a workflow?
 
