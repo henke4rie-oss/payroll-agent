@@ -44,6 +44,8 @@ const themeBtn = document.getElementById("theme-toggle");
 const newChatBtn = document.getElementById("new-chat");
 
 let busy = false;
+let changedName = null; // the employee whose row is highlighted on the Team tab after an approved change
+let highlightNext = false;
 let openCard = null; // the approval card that is still waiting for a click, if any
 
 // ---------- small helpers ----------
@@ -301,7 +303,10 @@ function approvalCard(approval) {
       const result = await post("/api/approve", { session_id: sessionId, approval_id: approval.id, approve: yes });
       typing.remove();
       if (!yes) settleCard(card, "approval-cancelled", "Cancelled · nothing was changed");
-      else if (result.status === "approved") settleCard(card, "approval-done", "Approved · saved to the audit log");
+      else if (result.status === "approved") {
+        settleCard(card, "approval-done", "Approved · saved to the audit log");
+        highlightNext = true;
+      }
       else settleCard(card, "approval-cancelled", "Not applied · nothing was changed");
       renderReply(result);
     } catch (err) {
@@ -448,6 +453,9 @@ newChatBtn.addEventListener("click", () => {
   if (busy) return;
   sessionId = saveSessionId(newSessionId()); // a new session also gets a fresh copy of the demo data
   openCard = null;
+  changedName = null;
+  highlightNext = false;
+  selectTab("chat");
   messagesEl.replaceChildren();
   showWelcome();
   input.focus();
@@ -459,3 +467,120 @@ try {
 } catch { /* ignore */ }
 
 showWelcome();
+
+// ---------- tabs: Chat | Team | Activity ----------
+
+const TAB_NAMES = ["chat", "team", "activity"];
+
+function selectTab(name, focus = false) {
+  for (const tabName of TAB_NAMES) {
+    const tab = document.getElementById(`tab-${tabName}`);
+    const selected = tabName === name;
+    tab.setAttribute("aria-selected", String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+    document.getElementById(`panel-${tabName}`).hidden = !selected;
+    if (selected && focus) tab.focus();
+  }
+  if (name === "team") loadTeam();
+  if (name === "activity") loadActivity();
+}
+
+for (const name of TAB_NAMES) {
+  const tab = document.getElementById(`tab-${name}`);
+  tab.addEventListener("click", () => selectTab(name));
+  tab.addEventListener("keydown", (event) => {
+    const at = TAB_NAMES.indexOf(name);
+    const target = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: TAB_NAMES.length - 1 }[event.key];
+    if (target === undefined) return;
+    event.preventDefault();
+    selectTab(TAB_NAMES[(target + TAB_NAMES.length) % TAB_NAMES.length], true);
+  });
+}
+
+async function getJson(path) {
+  const res = await fetch(`${path}?session_id=${encodeURIComponent(sessionId)}`);
+  if (!res.ok) throw new Error("request failed");
+  return res.json();
+}
+
+function panelMessage(container, text, className = "empty") {
+  const message = el("p", className, text);
+  if (className !== "empty") message.setAttribute("role", "alert");
+  container.replaceChildren(message);
+}
+
+async function loadTeam() {
+  const body = document.getElementById("team-body");
+  try {
+    const [team, activity] = await Promise.all([getJson("/api/team"), getJson("/api/activity")]);
+    if (highlightNext && activity.entries.length) {
+      changedName = activity.entries[0].employee;
+      highlightNext = false;
+    }
+    const sheet = el("div", "sheet");
+    const t = el("table");
+    const head = el("tr");
+    for (const h of ["Name", "Age", "Gross", "PAYE", "UIF", "SDL", "Net pay", ""]) head.append(el("th", "", h));
+    const thead = el("thead");
+    thead.append(head);
+    const tbody = el("tbody");
+    for (const p of team.employees) {
+      const row = el("tr", p.name === changedName ? "row-changed" : "");
+      const nameCell = el("td", "", p.name);
+      if (p.name === changedName) nameCell.append(el("span", "badge", "Changed"));
+      row.append(nameCell, el("td", "", String(p.age)));
+      for (const value of [p.gross_monthly, p.paye, p.uif_employee, p.sdl, p.net_pay]) {
+        row.append(el("td", "", value === undefined ? "n/a" : money(value)));
+      }
+      const ask = el("button", "btn btn-small", "Ask");
+      ask.type = "button";
+      ask.setAttribute("aria-label", `Ask Penny about ${p.name}`);
+      ask.addEventListener("click", () => {
+        selectTab("chat");
+        send(`Show ${p.name}'s full payslip`);
+      });
+      const askCell = el("td");
+      askCell.append(ask);
+      row.append(askCell);
+      tbody.append(row);
+    }
+    const totals = team.totals;
+    const foot = el("tr");
+    foot.append(el("td", "", `Total (${totals.employee_count})`), el("td", "", ""));
+    for (const value of [totals.total_gross, totals.total_paye, totals.total_uif_employee, totals.total_sdl, totals.total_net_pay]) {
+      foot.append(el("td", "", money(value)));
+    }
+    foot.append(el("td", "", ""));
+    const tfoot = el("tfoot");
+    tfoot.append(foot);
+    t.append(thead, tbody, tfoot);
+    sheet.append(t);
+    body.replaceChildren(sheet);
+  } catch {
+    panelMessage(body, "I couldn't load the team right now. Try again in a moment.", "error");
+  }
+}
+
+async function loadActivity() {
+  const body = document.getElementById("activity-body");
+  try {
+    const { entries } = await getJson("/api/activity");
+    if (!entries.length) {
+      panelMessage(body, "No changes yet. Try the Approval safeguard in Chat.");
+      return;
+    }
+    const list = el("ul", "activity");
+    for (const entry of entries) {
+      const item = el("li");
+      const when = el("time", "", entry.when ? new Date(entry.when).toLocaleString() : "");
+      if (entry.when) when.dateTime = entry.when;
+      const line = el("div");
+      line.append(el("span", "who", entry.employee), document.createTextNode(` · ${entry.text}`));
+      item.append(when, line);
+      list.append(item);
+    }
+    body.replaceChildren(list);
+  } catch {
+    panelMessage(body, "I couldn't load the activity right now. Try again in a moment.", "error");
+  }
+}

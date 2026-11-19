@@ -25,7 +25,15 @@
     </div>
   </header>
 
+  <nav class="tabs" role="tablist" aria-label="Penny sections">
+    <button type="button" role="tab" id="tab-chat" class="tab" aria-selected="true" aria-controls="panel-chat">Chat</button>
+    <button type="button" role="tab" id="tab-team" class="tab" aria-selected="false" aria-controls="panel-team" tabindex="-1">Team</button>
+    <button type="button" role="tab" id="tab-activity" class="tab" aria-selected="false" aria-controls="panel-activity" tabindex="-1">Activity</button>
+  </nav>
+
   <main class="layout">
+    <div class="panels">
+    <div id="panel-chat" role="tabpanel" aria-labelledby="tab-chat">
     <section class="chat" aria-label="Chat with Penny">
       <div id="messages" class="messages" role="log" aria-live="polite" aria-relevant="additions"></div>
 
@@ -37,6 +45,20 @@
         <button type="submit" id="send" class="btn btn-primary">Send</button>
       </form>
     </section>
+    </div>
+
+    <section id="panel-team" class="panel" role="tabpanel" aria-labelledby="tab-team" hidden>
+      <h2 class="panel-title">Team</h2>
+      <p class="panel-intro">Monthly figures from the tax engine, never from the model. SDL is paid by the employer. To change anything, ask Penny: every change needs your approval.</p>
+      <div id="team-body"></div>
+    </section>
+
+    <section id="panel-activity" class="panel" role="tabpanel" aria-labelledby="tab-activity" hidden>
+      <h2 class="panel-title">Activity</h2>
+      <p class="panel-intro">Every change a person approved, newest first. Nothing appears here unless someone clicked Approve.</p>
+      <div id="activity-body"></div>
+    </section>
+    </div>
 
     <aside class="side" aria-label="How Penny works">
       <h2>How Penny works</h2>

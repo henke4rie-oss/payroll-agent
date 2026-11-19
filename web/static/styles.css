@@ -78,7 +78,15 @@ body {
 .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: var(--accent-text); font-weight: 600; }
 .btn-ghost { background: transparent; }
 
+/* Tabs: Chat | Team | Activity */
+[hidden] { display: none !important; }
+.tabs { max-width: 1100px; margin: 0 auto; padding: 8px 16px 0; display: flex; gap: 6px; overflow-x: auto; }
+.tab { font: inherit; cursor: pointer; flex: none; padding: 8px 18px; border-radius: 12px 12px 0 0; border: 1px solid var(--border); border-bottom: 0; background: transparent; color: var(--muted); }
+.tab:hover { color: var(--text); }
+.tab[aria-selected="true"] { background: var(--surface); color: var(--text); font-weight: 700; border-color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+
 /* Layout */
+.panels { min-width: 0; }
 .layout { max-width: 1100px; margin: 0 auto; padding: 8px 16px 32px; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
 
 .chat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; height: min(80dvh, 780px); min-height: 460px; }
@@ -170,3 +178,24 @@ body {
 @media (max-width: 480px) {
   .top { flex-direction: column; align-items: flex-start; }
 }
+
+/* Team and Activity panels */
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; min-height: 460px; max-height: min(80dvh, 780px); overflow: auto; }
+.panel-title { margin: 0 0 4px; font-size: 1.15rem; }
+.panel-intro { margin: 0 0 14px; color: var(--muted); font-size: 0.9rem; }
+.sheet { overflow-x: auto; }
+.sheet table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 0.92rem; }
+.sheet th, .sheet td { padding: 8px 10px 8px 0; text-align: right; white-space: nowrap; }
+.sheet th:first-child, .sheet td:first-child { text-align: left; }
+.sheet th { color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); }
+.sheet tbody tr + tr td, .sheet tfoot td { border-top: 1px solid var(--border); }
+.sheet tfoot td { font-weight: 700; }
+.sheet td:last-child, .sheet th:last-child { text-align: right; padding-right: 0; }
+.row-changed td { background: var(--safe-bg); }
+.badge { display: inline-block; margin-left: 8px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--safe); background: var(--safe-bg); color: var(--safe); font-weight: 700; font-size: 0.72rem; }
+.btn-small { padding: 4px 10px; font-size: 0.82rem; border-radius: 10px; }
+.activity { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.activity li { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; }
+.activity time { display: block; color: var(--muted); font-size: 0.8rem; }
+.activity .who { font-weight: 700; }
+.empty { color: var(--muted); }

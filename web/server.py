@@ -16,6 +16,7 @@ audit log) still runs, because it is the same code as in the terminal version.
 Each browser session gets its own temporary copy of the employee data, so demo edits never touch the repo.
 """
 
+import json
 import os
 import re
 import secrets
@@ -28,7 +29,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
@@ -69,6 +70,56 @@ class Reply(BaseModel):
     table: Optional[list[dict]] = None  # everyone's figures, straight from the tools (not typed by the model)
     approval: Optional[ApprovalCard] = None
     trace: list[str] = []  # what the agent did, so the page can show "How Penny got this"
+
+
+class TeamReply(BaseModel):
+    employees: list[dict]
+    totals: dict
+
+
+class ActivityReply(BaseModel):
+    entries: list[dict]
+
+
+def _rands(value) -> str:
+    return f"R{float(value):,.2f}"
+
+
+def describe_entry(entry: dict) -> dict:
+    """One audit-log (or approved-payslip) record in plain words for the Activity tab."""
+    action = entry.get("action", "approve")
+    when = entry.get("changed_at") or entry.get("approved_at") or ""
+    employee = entry.get("employee", "")
+    if action == "update":
+        salary = entry.get("field") == "gross_monthly"
+        show = _rands if salary else str
+        label = "Salary" if salary else str(entry.get("field", "Value")).capitalize()
+        text = f"{label} {show(entry.get('old_value'))} \u2192 {show(entry.get('new_value'))}"
+    elif action == "add":
+        text = f"Added (age {entry.get('age')}, {_rands(entry.get('gross_monthly', 0))} a month)"
+    elif action == "rename":
+        employee = entry.get("new_name", "")
+        text = f"Renamed from {entry.get('old_name', '')}"
+    elif action == "remove":
+        text = "Removed (the details are kept in the audit log)"
+    else:
+        text = "Payslip approved"
+    return {"when": when, "employee": employee, "text": text}
+
+
+def read_activity(session_dir: Path, limit: int = 50) -> list[dict]:
+    """Everything a person approved in this session, newest first."""
+    entries: list[dict] = []
+    for name in ("audit_log.json", "approved_payslips.json"):
+        path = session_dir / name
+        if path.exists():
+            try:
+                entries.extend(json.loads(path.read_text(encoding="utf-8")))
+            except (OSError, ValueError):
+                continue
+    described = [describe_entry(e) for e in entries]
+    described.sort(key=lambda e: e["when"], reverse=True)
+    return described[:limit]
 
 
 @dataclass
@@ -219,6 +270,21 @@ def create_app(llm_factory: LlmFactory = default_llm_factory) -> FastAPI:
             remember(session.history, pending.question, result.message)
             session.log(f"result: {result.status}")
             return Reply(status=result.status, message=result.message, payslip=result.payslip, trace=session.trace)
+
+    @app.get("/api/team", response_model=TeamReply)
+    def team(session_id: str = Query(pattern=SESSION_ID_PATTERN)) -> TeamReply:
+        """Everyone's monthly figures from the tax engine. Read-only: no model call, nothing changes."""
+        session = get_session(session_id, create=True)
+        with session.lock:
+            return TeamReply(employees=session.toolbox.functions["list_employees"]()["employees"],
+                             totals=session.toolbox.functions["payroll_summary"]())
+
+    @app.get("/api/activity", response_model=ActivityReply)
+    def activity(session_id: str = Query(pattern=SESSION_ID_PATTERN)) -> ActivityReply:
+        """The changes a person approved in this session, newest first. Read-only."""
+        session = get_session(session_id, create=True)
+        with session.lock:
+            return ActivityReply(entries=read_activity(session.dir))
 
     @app.get("/")
     def index():

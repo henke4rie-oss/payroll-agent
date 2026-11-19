@@ -121,7 +121,9 @@ Penny is the web version of the agent: a chat page where you ask questions in pl
 
 ![Penny asking for approval before changing Thandi's age, with Approve and Reject buttons](docs/penny.png)
 
-The page has two groups of suggestions:
+The page has three tabs. **Chat** is where you ask and approve. **Team** shows everyone's monthly figures from the tax engine, with a totals row, and highlights whoever you just changed. **Activity** lists every change a person approved. Team and Activity are read-only and never call the model, so changes can only happen through the chat and its approval card.
+
+The chat page has two groups of suggestions:
 - **Ask Penny:** everyday questions, like *Tax numbers for everyone* (everyone's figures come from the tax engine and are shown as a table).
 - **See the safeguards:** prompts chosen to show how Penny stays safe. Each says what to watch for when you click it: *Approval* (nothing saves until you click Approve), *Typo catch* (she asks which person you meant), *Two-part question* (both parts get answered) and *Unknown person* (she never invents a number).
 
@@ -174,6 +176,8 @@ The 93 tests cover the tax calculations (expected values worked out by hand from
 - Add a worked example to the tool descriptions, to reduce empty `fields`
 - Memory that survives restarts (saved conversation facts)
 - Retrieval over SARS guidance documents, so rule questions can be answered with citations
+- A payroll sheet with AI built in: ask "raise everyone 5%" and get **one** approval card listing every change, add an "explain this person's tax" button, and flag figures that look wrong (for example someone over 65 without the rebate)
+- Export a payslip PDF and an EMP201 summary
 
 ## AI tools used
 

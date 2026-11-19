@@ -283,3 +283,59 @@ def test_a_change_to_the_same_value_is_refused_without_an_approval_card():
     assert reply.get("approval") is None
     saved = json.loads((session_dir(client) / "employees.json").read_text())
     assert next(p for p in saved if p["name"] == "Thandi Nkosi")["age"] == 30
+
+
+def team(client, sid=SID):
+    return client.get("/api/team", params={"session_id": sid})
+
+
+def activity(client, sid=SID):
+    return client.get("/api/activity", params={"session_id": sid})
+
+
+def test_team_lists_everyone_with_engine_figures_and_totals():
+    client, created = make_client([final()])
+    body = team(client).json()
+
+    assert len(body["employees"]) == 5
+    thandi = next(e for e in body["employees"] if e["name"] == "Thandi Nkosi")
+    assert (thandi["gross_monthly"], thandi["paye"], thandi["net_pay"]) == (25000, 3381.0, 21441.88)
+    assert body["totals"]["total_gross"] == 124500.0
+    assert body["totals"]["total_net_pay"] == 106053.52
+    assert created[0].step_calls == 0  # the Team tab never calls the model
+
+
+def test_activity_starts_empty():
+    client, created = make_client([final()])
+
+    assert activity(client).json() == {"entries": []}
+    assert created[0].step_calls == 0
+
+
+def test_an_approved_change_shows_in_team_and_activity():
+    client, _ = make_client(CHANGE_AGE)
+    card = chat(client, "change thandi's age to 66").json()["approval"]
+    assert activity(client).json()["entries"] == []  # nothing is logged until a person approves
+
+    decide(client, card["id"], True)
+    people = team(client).json()["employees"]
+    entries = activity(client).json()["entries"]
+
+    assert next(e for e in people if e["name"] == "Thandi Nkosi")["age"] == 66
+    assert len(entries) == 1
+    assert entries[0]["employee"] == "Thandi Nkosi" and entries[0]["text"] == "Age 30 \u2192 66"
+
+
+def test_a_rejected_change_leaves_activity_empty():
+    client, _ = make_client(CHANGE_AGE)
+    card = chat(client, "change thandi's age to 66").json()["approval"]
+    decide(client, card["id"], False)
+
+    assert activity(client).json()["entries"] == []
+
+
+def test_team_and_activity_need_a_valid_session_id():
+    client, _ = make_client([final()])
+
+    assert client.get("/api/team", params={"session_id": "x"}).status_code == 422
+    assert client.get("/api/activity").status_code == 422
