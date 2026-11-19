@@ -11,9 +11,7 @@ const SUGGESTIONS = [
   "What's the total payroll?",
 ];
 
-const WELCOME =
-  "Hi, I'm Penny. I can look up pay and tax for your team, work out what-ifs, and make changes once you approve them. " +
-  "Try one of the suggestions below, or ask me anything.";
+const WELCOME = "Ask me about pay or tax, or pick a suggestion below.";
 
 const messagesEl = document.getElementById("messages");
 const chipsEl = document.getElementById("chips");
