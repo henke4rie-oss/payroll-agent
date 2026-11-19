@@ -27,8 +27,8 @@ All numbers below are measured on this project (logs and `evals/`), not estimate
 
 | | Result |
 |---|---|
-| Live eval (30 real phrasings) | **28/30** on the latest run, 29/30 before the redesign (see "Known limitations") |
-| Unit tests | **93**, no API key needed |
+| Live eval (31 real phrasings) | **27 to 28 of 31** depending on the run (see "Known limitations"). Two cases fail every run and two sometimes |
+| Unit tests | **119**, no API key needed |
 | Input tokens per simple question | about **3,100** over 2 model calls at first, about **770** over 1 call now (average of the one-call eval cases) |
 | Reply time | typically **0.4 to 0.7 s** per model call on Groq. On the free NVIDIA endpoint I used first, one question took 174 s (two 60 s timeouts plus a slow third attempt). Most of that gain is the provider, not my code. |
 | `agent.py` | about 600 lines (mostly phrase-matching rules) replaced by about 300 lines |
@@ -74,7 +74,7 @@ Under these three sit the small functions in `tools.py` (lookup, payslip, update
 
 ### Evaluation
 
-`python -m evals.run` runs 30 real phrasings (typos, possessives, follow-ups, rankings, what-ifs, declined changes) against the live model. Each reply is graded for the figures it must contain, the figures it must not contain, and invented amounts. Results are saved to `evals/results/`, and the baseline from before the redesign is in `evals/baseline.json`. It uses real tokens (about 30k per run) and paces itself under the free-tier limit (`EVAL_TPM`), so it is run on demand, not as part of `pytest`.
+`python -m evals.run` runs 31 real phrasings (typos, possessives, follow-ups, rankings, what-ifs, declined changes) against the live model. Each reply is graded for the figures it must contain, the figures it must not contain, and invented amounts. Results are saved to `evals/results/`, and the baseline from before the redesign is in `evals/baseline.json`. It uses real tokens (about 30k per run) and paces itself under the free-tier limit (`EVAL_TPM`), so it is run on demand, not as part of `pytest`.
 
 ## Design decisions
 
@@ -111,6 +111,34 @@ Things to try:
 - `Add Zanele Mkhize, 35, R30000`
 - `What's the total payroll?`
 
+## Meet Penny (web chat)
+
+Penny is the web version of the agent: a chat page where you ask questions in plain language, and every change waits for an **Approve** or **Reject** click.
+
+```bash
+.venv/bin/uvicorn web.server:app --port 8000   # then open http://localhost:8000
+```
+
+Try: *Hi Penny* · *Tax numbers for everyone* · *Change Thandi Nkosi's age to 66* (click **Approve** or **Reject**).
+
+Each browser session works on its own copy of the demo data, so nothing in the repo changes.
+
+## How approval works on the web
+
+A website can't pause and wait for a person the way the terminal does, so approval works in two steps ("pause by exception, approve by replay"):
+
+1. **Pause.** The tool checks the change and works out the before and after, then asks for approval. On the web that raises `ApprovalNeeded`, so nothing is saved yet and the page shows an approval card.
+2. **Replay.** When you click **Approve**, the server runs the *same* tool call again in plain code, with no model call. It only goes through if the data still matches the summary you saw. If the data changed in the meantime, nothing is applied.
+
+The model never sees or decides the approval. The validation, exact-name rules and audit log are the same code as in the terminal version.
+
+## What I learned from testing Penny
+
+- **A personality hurt accuracy.** Adding the name "Penny" to the model's instructions made other answers worse in the eval, even though the name alone looked harmless. The instructions are back to the original. Penny's name lives in code and the page instead, and I re-measure every prompt change.
+- **A token shortcut dropped half a question.** When one tool call succeeds, the code writes the reply without a second model call. A two-part question ("tax now, and what if she got paid 5k more?") lost its second half. Multi-part questions now skip the shortcut, and the case is in the eval.
+- **Money written three ways.** The model wrote "R3 381.00" and "R3,381.00". Code now formats every rand amount in its words the same way, with tests.
+- **Approval I could prove.** I broke the "only approve what you saw" check on purpose, and tests failed. The check is there because a test needs it to be.
+
 ## Tests
 
 ```bash
@@ -121,7 +149,7 @@ The 93 tests cover the tax calculations (expected values worked out by hand from
 
 ## Known limitations
 
-- **The live eval is not perfect, and it varies between runs.** The latest full run scored 28/30 (29/30 before the redesign). One or two cases change from run to run, because the model (`gpt-oss-20b`) sometimes leaves `fields` empty. In the latest run the failing cases were `take-home` and `earn`: both returned the full payslip instead of the single figure asked for. The figures were correct, and no case invented an amount.
+- **The live eval is not perfect, and it varies between runs.** The latest full runs scored 27 and 28 of 31 (29/30 on the older 30-case set before the redesign). `take-home` and `earn` fail every run: they return the full payslip where one figure was asked for. `tax-numbers` and `filter-age` pass or fail depending on the run. One or two cases change from run to run, because the model (`gpt-oss-20b`) sometimes leaves `fields` empty. In the latest run the failing cases were `take-home` and `earn`: both returned the full payslip instead of the single figure asked for. The figures were correct, and no case invented an amount.
 - **That variation is the model, not the rate limit.** Groq's free-tier rate limit returned some 429 responses during eval runs, but the retries absorbed them and they caused no failures.
 - **The redesign did not raise the score.** It removed the phrase-matching code, fixed follow-up questions (such as "and sipho khumalo?" after a PAYE question) and made the behaviour measurable, at about the same accuracy.
 - The agent keeps the last 4 exchanges of the current CLI session; restarting clears it.

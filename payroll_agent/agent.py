@@ -31,6 +31,27 @@ SYSTEM_PROMPT = """Payroll assistant for a small South African business. Amounts
 - If a tool says a name is unknown or ambiguous, or a value is missing (including paid days per week for a daily rate), ask one short question.
 - Money as R25,000.00. Keep replies short and plain."""
 
+# A greeting gets a fixed reply from code: no model call, no tokens, and the same answer every time.
+# "Penny" lives only in code and the UI. The eval showed that adding her name or greeting rules to the
+# prompt made the model worse at other questions, so the prompt is unchanged.
+GREETING = re.compile(
+    r"^\s*(?:(?:hi|hello|hey|hiya|howzit|hallo|good (?:morning|afternoon|evening))(?:\s+(?:there|penny))?|"
+    r"(?:penny[,\s]*)?(?:what can you do|who are you|help))[\s!.?,]*$",
+    re.IGNORECASE,
+)
+GREETING_REPLY = (
+    "Hi, I'm Penny, your payroll assistant. I work out pay and tax with the SARS 2026/27 tables, "
+    "and I never change anything without your OK. Try:\n"
+    "- What is Thandi Nkosi's net pay?\n"
+    "- Tax numbers for everyone\n"
+    "- What would Sipho Khumalo's pay be at 66?"
+)
+
+# Signs that one message asks for MORE than one thing ("whats thandis tax AND IF she got 5k more").
+# Then the shortcut below is skipped, so the model can make its next tool call instead of the reply
+# going out after the first answer and silently dropping the rest of the question.
+MORE_TO_DO = re.compile(r"\b(?:and|also|plus|then)\s+(?:if|what|how|who|would|could)\b|\?.+\?", re.IGNORECASE)
+
 # Words that suggest the user wants to change data, so the change_employee tool must be offered.
 # Hiding it is only a token saving: if this misses, the model says it can't, and approval is enforced in the tool.
 WRITE_INTENT = re.compile(
@@ -45,6 +66,17 @@ SALARY_PHRASE = {"month": "a month", "year": "a year", "week": "a week", "day": 
 PERIOD_LABEL = {"month": "monthly", "year": "annual", "week": "weekly average (52 weeks per year)"}
 
 
+class ApprovalNeeded(Exception):
+    """Raised by a web front end's ask_human to PAUSE the agent until a person clicks Approve or Reject.
+    By then the tool has already validated the change and worked out the before/after, but saved nothing.
+    run_tool attaches the tool call, so the front end can run exactly that call again once approved."""
+
+    def __init__(self, summary: str):
+        super().__init__(summary)
+        self.summary = summary
+        self.call: Optional[ToolCall] = None
+
+
 def run_tool(toolbox: Toolbox, call: ToolCall) -> dict:
     """Run one tool the model asked for. Never crashes: problems go back to the model as an error."""
     function = toolbox.model_tools.get(call.name)
@@ -52,8 +84,30 @@ def run_tool(toolbox: Toolbox, call: ToolCall) -> dict:
         return {"error": f"Unknown tool '{call.name}'. Available tools: {', '.join(toolbox.model_tools)}"}
     try:
         return function(**call.args)
+    except ApprovalNeeded as pause:  # a front end that can't wait for a person (a website)
+        pause.call = call
+        raise
     except TypeError as err:  # model sent missing or extra arguments
         return {"error": f"Bad arguments for {call.name}: {err}"}
+
+
+def apply_approved(toolbox: Toolbox, call: ToolCall) -> AgentResult:
+    """Run an already-approved change again, in code, with no model call.
+
+    The toolbox's ask_human must approve only the exact summary the person saw. If the data changed
+    since then, the summary differs, the tool reports 'declined', and nothing is applied."""
+    toolbox.state.reset()
+    result = run_tool(toolbox, call)
+    status = result.get("status")
+    if status == "declined":
+        return AgentResult(
+            status="error",
+            message="Nothing was changed: the data is different from when I asked you. Please ask me again.")
+    message = _change_reply(call.args, result, toolbox) if call.name == "change_employee" else None
+    if message is None:
+        return AgentResult(
+            status="error", message=f"I couldn't apply that: {result.get('error', 'unknown problem')}. Nothing was changed.")
+    return AgentResult(status="approved", message=message, payslip=toolbox.state.last_payslip)
 
 
 def _tools_for(question: str, conversation_history: Optional[list]) -> Optional[list[str]]:
@@ -62,6 +116,17 @@ def _tools_for(question: str, conversation_history: Optional[list]) -> Optional[
     if any(WRITE_INTENT.search(text) for text in (question, *previous)):
         return None
     return list(READ_ONLY_TOOLS)
+
+
+_RAND = re.compile(r"R\s?(\d{1,3}(?:[ \u00a0\u202f,]\d{3})+|\d+)(\.\d{1,2})?(?!\d)")
+
+
+def tidy_money(text: str) -> str:
+    """Write every rand amount in the model's words the same way: R3 381.00 / R3\u202f381 -> R3,381.00 / R3,381."""
+    def fix(match: re.Match) -> str:
+        digits = re.sub(r"[ \u00a0\u202f,]", "", match.group(1))
+        return f"R{int(digits):,}{match.group(2) or ''}"
+    return _RAND.sub(fix, text)
 
 
 def _money(value: float) -> str:
@@ -216,6 +281,11 @@ def _remember_conversation(
         del conversation_history[:-MAX_CONVERSATION_MESSAGES]
 
 
+def remember(conversation_history: Optional[list], question: str, answer: str) -> None:
+    """Public wrapper: front ends use it to record an exchange that finished outside run_agent."""
+    _remember_conversation(conversation_history, question, answer)
+
+
 def run_agent(
     question: str,
     llm,
@@ -224,10 +294,15 @@ def run_agent(
     conversation_history: Optional[list] = None,
 ) -> AgentResult:
     toolbox.state.reset()
+    if GREETING.match(question):
+        log("greeting: answered by code, no model call")
+        _remember_conversation(conversation_history, question, GREETING_REPLY)
+        return AgentResult(status="answered", message=GREETING_REPLY)
     history: list = list(conversation_history or [])
     history.append(UserMessage(question))
 
     tool_names = _tools_for(question, conversation_history)
+    asks_for_more = bool(MORE_TO_DO.search(question))
     model_seconds = 0.0
     tool_seconds = 0.0
     model_calls = 0
@@ -265,7 +340,8 @@ def run_agent(
             call_ids.append(call.id or call.name)
         history.append(ToolResults(results, call_ids))
 
-        # One successful tool call needs no extra model call to be put into words.
+        # One successful tool call needs no extra model call to be put into words,
+        # unless the question asks for more than this one answer.
         if len(results) == 1:
             call, (name, result) = turn.tool_calls[0], results[0]
             if name == "change_employee":
@@ -277,7 +353,7 @@ def run_agent(
                     return AgentResult(
                         status=toolbox.state.last_approval or "answered", message=message,
                         payslip=None if declined else toolbox.state.last_payslip)
-            else:
+            elif not asks_for_more:
                 message = _format_reply(name, call.args, result)
                 if message is not None:
                     log_timing()
@@ -290,9 +366,11 @@ def run_agent(
     log_timing()
 
     reply = llm.structure(history)
+    reply.message = tidy_money(reply.message)  # the model writes the words; code fixes how amounts look
 
     # Code, not the model, decides these two facts: whether a human approved, and the numbers.
     status = toolbox.state.last_approval or reply.status
     _remember_conversation(conversation_history, question, reply.message)
 
-    return AgentResult(status=status, message=reply.message, payslip=toolbox.state.last_payslip)
+    return AgentResult(status=status, message=reply.message, payslip=toolbox.state.last_payslip,
+                       table=toolbox.state.last_rows)

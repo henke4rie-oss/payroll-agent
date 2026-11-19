@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Penny · Payroll assistant</title>
+  <meta name="description" content="Penny is a payroll assistant. The model works out what you asked, code calculates every rand, and you approve every change.">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script type="module" src="/static/app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#composer-input">Skip to the message box</a>
+
+  <header class="top">
+    <div class="brand">
+      <span class="avatar avatar-lg" aria-hidden="true">P</span>
+      <div>
+        <h1>Penny</h1>
+        <p class="sub">Payroll assistant · SARS 2026/27</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button type="button" id="new-chat" class="btn btn-ghost">New chat</button>
+      <button type="button" id="theme-toggle" class="btn btn-ghost" aria-label="Switch to light theme">Light</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="chat" aria-label="Chat with Penny">
+      <div id="messages" class="messages" role="log" aria-live="polite" aria-relevant="additions"></div>
+
+      <div id="chips" class="chips" role="group" aria-label="Things to try"></div>
+
+      <form id="composer" class="composer" autocomplete="off">
+        <label for="composer-input" class="sr-only">Message Penny</label>
+        <input id="composer-input" name="message" type="text" maxlength="500" placeholder="Ask Penny about pay, tax or your team" required>
+        <button type="submit" id="send" class="btn btn-primary">Send</button>
+      </form>
+    </section>
+
+    <aside class="side" aria-label="How Penny works">
+      <h2>How Penny works</h2>
+      <ol class="steps">
+        <li><strong>The model reads your question.</strong> It picks a tool and fills in what you asked for.</li>
+        <li><strong>Code does the maths.</strong> Every rand comes from a tested tax engine using the SARS tables, never from the model.</li>
+        <li><strong>You approve every change.</strong> Nothing is saved until you click Approve, and approved changes go to an audit log.</li>
+      </ol>
+      <p class="note">Demo data. Your changes are saved to a private copy that is thrown away after a while, so you can try anything.</p>
+    </aside>
+  </main>
+</body>
+</html>

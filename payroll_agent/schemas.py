@@ -39,3 +39,4 @@ class AgentResult(BaseModel):
     status: str
     message: str
     payslip: Optional[PayslipSummary] = None
+    table: Optional[list[dict]] = None  # everyone's figures from the tools, for a UI to show beside the reply

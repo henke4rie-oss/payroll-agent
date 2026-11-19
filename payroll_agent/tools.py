@@ -54,10 +54,12 @@ class ToolState:
 
     last_payslip: Optional[PayslipSummary] = None
     last_approval: Optional[str] = None  # "approved" or "approval_declined"
+    last_rows: Optional[list] = None  # everyone's figures from team_pay "list", so a UI can show them from code
 
     def reset(self) -> None:
         self.last_payslip = None
         self.last_approval = None
+        self.last_rows = None
 
 
 @dataclass
@@ -241,7 +243,8 @@ def build_toolbox(
         old_value = found[field_name]
         show = (lambda v: f"R{v:,.2f}") if field_name == "gross_monthly" else str
         summary = (
-            f"Change {found['name']}'s {field_name}: {show(old_value)} -> {show(new_value)}. "
+            f"Change {found['name']}'s {'salary' if field_name == 'gross_monthly' else field_name}: "
+            f"{show(old_value)} -> {show(new_value)}. "
             f"Net pay would go from R{before.net_pay:,.2f} to R{after.net_pay:,.2f}."
         )
         if not ask_human(summary):
@@ -430,6 +433,7 @@ def build_toolbox(
         if answer == "count":
             return {"answer": "count", "count": len(rows)}
         if answer == "list":
+            state.last_rows = rows
             return {"answer": "list", "count": len(rows), "employees": rows}
         if answer in ("highest", "lowest"):
             figure = "gross" if figure == "all" else figure

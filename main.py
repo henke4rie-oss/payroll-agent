@@ -28,6 +28,19 @@ def say(message: str) -> None:
     print(message)
 
 
+def format_table(rows: list[dict]) -> str:
+    """Everyone's monthly figures as a plain-text table."""
+    columns = [("Name", "name"), ("Age", "age"), ("Gross", "gross"), ("PAYE", "paye"),
+               ("UIF", "uif"), ("SDL", "sdl"), ("Net pay", "net")]
+    cells = [[h for h, _ in columns]]
+    for row in rows:
+        cells.append([str(row.get(k, "")) if k in ("name", "age") else
+                      (f"R{row[k]:,.2f}" if k in row else "n/a") for _, k in columns])
+    widths = [max(len(r[i]) for r in cells) for i in range(len(columns))]
+    lines = ["  ".join(c.ljust(w) if i == 0 else c.rjust(w) for i, (c, w) in enumerate(zip(r, widths))) for r in cells]
+    return "\n".join(lines[:1] + ["-" * len(lines[0])] + lines[1:])
+
+
 def ask_human(summary: str) -> bool:
     """The human-in-the-loop step: nothing is approved unless a person types y."""
     say(f"\nPlease confirm: {summary}")
@@ -47,7 +60,7 @@ def main() -> None:
         log=log,
     )
 
-    say(f"Payroll agent ready ({llm.model}). Type 'quit' to exit.")
+    say(f"Hi, I'm Penny, your payroll assistant ({llm.model}). Type 'quit' to exit.")
     conversation_history = []
     while True:
         question = input("\nYou: ").strip()
@@ -74,7 +87,9 @@ def main() -> None:
             continue
         elapsed = time.perf_counter() - request_started
         log(f"Agent [{result.status}] (request-to-reply {elapsed:.3f}s)")
-        say(f"Agent: {result.message}")
+        say(f"Penny: {result.message}")
+        if result.table:  # everyone's figures, printed from the tool results (not typed by the model)
+            say(format_table(result.table))
 
 
 if __name__ == "__main__":
