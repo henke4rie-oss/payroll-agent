@@ -11,64 +11,90 @@
 <body>
   <a class="skip" href="#composer-input">Skip to the message box</a>
 
-  <header class="top">
-    <div class="brand">
-      <span class="avatar avatar-lg" aria-hidden="true">P</span>
-      <div>
-        <h1>Penny</h1>
-        <p class="sub">Payroll assistant · SARS 2026/27</p>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="avatar avatar-lg" aria-hidden="true">P</span>
+        <div>
+          <h1>Penny</h1>
+          <p class="sub">Payroll assistant · SARS 2026/27</p>
+        </div>
       </div>
-    </div>
-    <div class="top-actions">
-      <button type="button" id="new-chat" class="btn btn-ghost">New chat</button>
-      <button type="button" id="theme-toggle" class="btn btn-ghost" aria-label="Switch to light theme">Light</button>
-    </div>
-  </header>
 
-  <nav class="tabs" role="tablist" aria-label="Penny sections">
-    <button type="button" role="tab" id="tab-chat" class="tab" aria-selected="true" aria-controls="panel-chat">Chat</button>
-    <button type="button" role="tab" id="tab-team" class="tab" aria-selected="false" aria-controls="panel-team" tabindex="-1">Team</button>
-    <button type="button" role="tab" id="tab-activity" class="tab" aria-selected="false" aria-controls="panel-activity" tabindex="-1">Activity</button>
-  </nav>
+      <nav class="nav" role="tablist" aria-label="Penny sections" aria-orientation="vertical">
+        <button type="button" role="tab" id="tab-chat" class="nav-item" aria-selected="true" aria-controls="panel-chat">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-4 3.5V16H4z"/></svg>
+          <span>Chat</span>
+        </button>
+        <button type="button" role="tab" id="tab-team" class="nav-item" aria-selected="false" aria-controls="panel-team" tabindex="-1">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.4"/><path d="M16.5 13.6c2.6.2 4.5 2 4.5 4.6"/></svg>
+          <span>Team</span>
+        </button>
+        <button type="button" role="tab" id="tab-activity" class="nav-item" aria-selected="false" aria-controls="panel-activity" tabindex="-1">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+          <span>Activity</span>
+        </button>
+      </nav>
 
-  <main class="layout">
-    <div class="panels">
-    <div id="panel-chat" role="tabpanel" aria-labelledby="tab-chat">
-    <section class="chat" aria-label="Chat with Penny">
-      <div id="messages" class="messages" role="log" aria-live="polite" aria-relevant="additions"></div>
-
-      <div id="chips" class="chips"></div>
-
-      <form id="composer" class="composer" autocomplete="off">
-        <label for="composer-input" class="sr-only">Message Penny</label>
-        <input id="composer-input" name="message" type="text" maxlength="500" placeholder="Ask Penny about pay, tax or your team" required>
-        <button type="submit" id="send" class="btn btn-primary">Send</button>
-      </form>
-    </section>
-    </div>
-
-    <section id="panel-team" class="panel" role="tabpanel" aria-labelledby="tab-team" hidden>
-      <h2 class="panel-title">Team</h2>
-      <p class="panel-intro">Monthly figures from the tax engine, never from the model. SDL is paid by the employer. To change anything, ask Penny: every change needs your approval.</p>
-      <div id="team-body"></div>
-    </section>
-
-    <section id="panel-activity" class="panel" role="tabpanel" aria-labelledby="tab-activity" hidden>
-      <h2 class="panel-title">Activity</h2>
-      <p class="panel-intro">Every change a person approved, newest first. Nothing appears here unless someone clicked Approve.</p>
-      <div id="activity-body"></div>
-    </section>
-    </div>
-
-    <aside class="side" aria-label="How Penny works">
-      <h2>How Penny works</h2>
-      <ol class="steps">
-        <li><strong>The model reads your question.</strong> It picks a tool and fills in what you asked for.</li>
-        <li><strong>Code does the maths.</strong> Every rand comes from a tested tax engine using the SARS tables, never from the model.</li>
-        <li><strong>You approve every change.</strong> Nothing is saved until you click Approve, and approved changes go to an audit log.</li>
-      </ol>
-      <p class="note">Demo data. Your changes are saved to a private copy that is thrown away after a while, so you can try anything.</p>
+      <div class="side-actions">
+        <button type="button" id="new-chat" class="btn btn-ghost">New chat</button>
+        <button type="button" id="theme-toggle" class="btn btn-ghost" aria-label="Switch to light theme">Light</button>
+      </div>
     </aside>
-  </main>
+
+    <main class="main">
+      <section id="panel-chat" class="page page-chat" role="tabpanel" aria-labelledby="tab-chat">
+        <header class="page-head">
+          <h2>Chat</h2>
+          <p>Ask in plain language. Every rand comes from the tax engine, and every change needs your OK.</p>
+        </header>
+        <div id="chat-home" class="chat-home">
+          <section id="chat" class="chat" aria-label="Chat with Penny">
+            <div id="messages" class="messages" role="log" aria-live="polite" aria-relevant="additions"></div>
+
+            <div id="chips" class="chips"></div>
+
+            <form id="composer" class="composer" autocomplete="off">
+              <label for="composer-input" class="sr-only">Message Penny</label>
+              <input id="composer-input" name="message" type="text" maxlength="500" placeholder="Ask Penny about pay, tax or your team" required>
+              <button type="submit" id="send" class="btn btn-primary">Send</button>
+            </form>
+          </section>
+        </div>
+      </section>
+
+      <section id="panel-team" class="page" role="tabpanel" aria-labelledby="tab-team" hidden>
+        <header class="page-head">
+          <h2>Team</h2>
+          <p>Monthly figures from the tax engine, never from the model. SDL is paid by the employer. To change anything, ask Penny: every change needs your approval.</p>
+        </header>
+        <div id="team-stats" class="stats"></div>
+        <div id="team-body"></div>
+      </section>
+
+      <section id="panel-activity" class="page" role="tabpanel" aria-labelledby="tab-activity" hidden>
+        <header class="page-head">
+          <h2>Activity</h2>
+          <p>Every change a person approved, newest first. Nothing appears here unless someone clicked Approve.</p>
+        </header>
+        <div id="activity-body"></div>
+      </section>
+    </main>
+
+    <aside class="right" aria-label="Help and chat">
+      <div id="how-it-works" class="how">
+        <h2>How Penny works</h2>
+        <ol class="steps">
+          <li><strong>The model reads your question.</strong> It picks a tool and fills in what you asked for.</li>
+          <li><strong>Code does the maths.</strong> Every rand comes from a tested tax engine using the SARS tables, never from the model.</li>
+          <li><strong>You approve every change.</strong> Nothing is saved until you click Approve, and approved changes go to an audit log.</li>
+        </ol>
+        <p class="note">Demo data. Your changes are saved to a private copy that is thrown away after a while, so you can try anything.</p>
+      </div>
+      <div id="chat-dock" class="chat-dock" hidden></div>
+    </aside>
+  </div>
+
+  <button type="button" id="chat-fab" class="fab" hidden>Chat with Penny</button>
 </body>
 </html>

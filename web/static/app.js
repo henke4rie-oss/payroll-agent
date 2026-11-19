@@ -44,6 +44,7 @@ const themeBtn = document.getElementById("theme-toggle");
 const newChatBtn = document.getElementById("new-chat");
 
 let busy = false;
+let currentPage = "chat";
 let changedName = null; // the employee whose row is highlighted on the Team tab after an approved change
 let highlightNext = false;
 let openCard = null; // the approval card that is still waiting for a click, if any
@@ -306,6 +307,7 @@ function approvalCard(approval) {
       else if (result.status === "approved") {
         settleCard(card, "approval-done", "Approved · saved to the audit log");
         highlightNext = true;
+        refreshPage(); // if Team or Activity is open next to the chat, update it right away
       }
       else settleCard(card, "approval-cancelled", "Not applied · nothing was changed");
       renderReply(result);
@@ -468,11 +470,33 @@ try {
 
 showWelcome();
 
-// ---------- tabs: Chat | Team | Activity ----------
+// ---------- pages: Chat | Team | Activity, with ONE chat that follows you ----------
 
 const TAB_NAMES = ["chat", "team", "activity"];
 
+// The chat is a single element. On the Chat page it fills the page; on Team and Activity the SAME element is
+// moved into the panel on the right, so the conversation (and any open approval card) simply carries on.
+const chatSection = document.getElementById("chat");
+const chatHome = document.getElementById("chat-home");
+const chatDock = document.getElementById("chat-dock");
+const howBox = document.getElementById("how-it-works");
+const fab = document.getElementById("chat-fab");
+const wide = window.matchMedia ? window.matchMedia("(min-width: 1240px)") : { matches: true, addEventListener() {} };
+
+function placeChat() {
+  const docked = currentPage !== "chat" && wide.matches;
+  const focused = chatSection.contains(document.activeElement) ? document.activeElement : null;
+  (docked ? chatDock : chatHome).append(chatSection);
+  chatSection.classList.toggle("chat-docked", docked);
+  chatDock.hidden = !docked;
+  howBox.hidden = docked;
+  fab.hidden = !(currentPage !== "chat" && !wide.matches);
+  if (focused) focused.focus();
+  scrollToEnd(); // a node that was just moved starts at the top, so go back to the latest message
+}
+
 function selectTab(name, focus = false) {
+  currentPage = name;
   for (const tabName of TAB_NAMES) {
     const tab = document.getElementById(`tab-${tabName}`);
     const selected = tabName === name;
@@ -481,8 +505,13 @@ function selectTab(name, focus = false) {
     document.getElementById(`panel-${tabName}`).hidden = !selected;
     if (selected && focus) tab.focus();
   }
-  if (name === "team") loadTeam();
-  if (name === "activity") loadActivity();
+  placeChat();
+  refreshPage();
+}
+
+function refreshPage() {
+  if (currentPage === "team") loadTeam();
+  if (currentPage === "activity") loadActivity();
 }
 
 for (const name of TAB_NAMES) {
@@ -490,11 +519,22 @@ for (const name of TAB_NAMES) {
   tab.addEventListener("click", () => selectTab(name));
   tab.addEventListener("keydown", (event) => {
     const at = TAB_NAMES.indexOf(name);
-    const target = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: TAB_NAMES.length - 1 }[event.key];
-    if (target === undefined) return;
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+    const jump = { Home: 0, End: TAB_NAMES.length - 1 }[event.key];
+    if (step === undefined && jump === undefined) return;
     event.preventDefault();
-    selectTab(TAB_NAMES[(target + TAB_NAMES.length) % TAB_NAMES.length], true);
+    const target = step !== undefined ? (at + step + TAB_NAMES.length) % TAB_NAMES.length : jump;
+    selectTab(TAB_NAMES[target], true);
   });
+}
+
+fab.addEventListener("click", () => selectTab("chat"));
+if (wide.addEventListener) wide.addEventListener("change", placeChat);
+
+// Ask from a page: on a wide screen the chat is right there; on a small one, jump to the chat first.
+function askPenny(text) {
+  if (!wide.matches) selectTab("chat");
+  send(text);
 }
 
 async function getJson(path) {
@@ -509,6 +549,13 @@ function panelMessage(container, text, className = "empty") {
   container.replaceChildren(message);
 }
 
+function statCard(label, value, note) {
+  const card = el("div", "stat");
+  card.append(el("p", "stat-label", label), el("p", "stat-value", value));
+  if (note) card.append(el("p", "stat-note", note));
+  return card;
+}
+
 async function loadTeam() {
   const body = document.getElementById("team-body");
   try {
@@ -517,6 +564,14 @@ async function loadTeam() {
       changedName = activity.entries[0].employee;
       highlightNext = false;
     }
+    const totals = team.totals;
+    document.getElementById("team-stats").replaceChildren(
+      statCard("Employees", String(totals.employee_count)),
+      statCard("Gross payroll", money(totals.total_gross), `plus ${money(totals.total_sdl)} SDL (employer)`),
+      statCard("PAYE (tax)", money(totals.total_paye)),
+      statCard("Net pay", money(totals.total_net_pay), `UIF ${money(totals.total_uif_employee)} (employee)`),
+    );
+
     const sheet = el("div", "sheet");
     const t = el("table");
     const head = el("tr");
@@ -532,19 +587,15 @@ async function loadTeam() {
       for (const value of [p.gross_monthly, p.paye, p.uif_employee, p.sdl, p.net_pay]) {
         row.append(el("td", "", value === undefined ? "n/a" : money(value)));
       }
-      const ask = el("button", "btn btn-small", "Ask");
+      const ask = el("button", "btn btn-small", "Ask Penny");
       ask.type = "button";
       ask.setAttribute("aria-label", `Ask Penny about ${p.name}`);
-      ask.addEventListener("click", () => {
-        selectTab("chat");
-        send(`Show ${p.name}'s full payslip`);
-      });
+      ask.addEventListener("click", () => askPenny(`Show ${p.name}'s full payslip`));
       const askCell = el("td");
       askCell.append(ask);
       row.append(askCell);
       tbody.append(row);
     }
-    const totals = team.totals;
     const foot = el("tr");
     foot.append(el("td", "", `Total (${totals.employee_count})`), el("td", "", ""));
     for (const value of [totals.total_gross, totals.total_paye, totals.total_uif_employee, totals.total_sdl, totals.total_net_pay]) {
@@ -557,6 +608,7 @@ async function loadTeam() {
     sheet.append(t);
     body.replaceChildren(sheet);
   } catch {
+    document.getElementById("team-stats").replaceChildren();
     panelMessage(body, "I couldn't load the team right now. Try again in a moment.", "error");
   }
 }
@@ -572,11 +624,19 @@ async function loadActivity() {
     const list = el("ul", "activity");
     for (const entry of entries) {
       const item = el("li");
+      const what = el("div", "what");
       const when = el("time", "", entry.when ? new Date(entry.when).toLocaleString() : "");
       if (entry.when) when.dateTime = entry.when;
-      const line = el("div");
-      line.append(el("span", "who", entry.employee), document.createTextNode(` · ${entry.text}`));
-      item.append(when, line);
+      what.append(el("div", "who", entry.employee), el("p", "change-text", entry.text), when);
+      const ask = el("button", "btn btn-small", "Ask about this");
+      ask.type = "button";
+      ask.setAttribute("aria-label", `Ask about ${entry.employee}'s change: ${entry.text}`);
+      ask.addEventListener("click", () => {
+        if (!wide.matches) selectTab("chat");
+        input.value = `About ${entry.employee}'s change (${entry.text}): `; // you finish the question
+        input.focus();
+      });
+      item.append(what, ask);
       list.append(item);
     }
     body.replaceChildren(list);

@@ -121,7 +121,7 @@ Penny is the web version of the agent: a chat page where you ask questions in pl
 
 ![Penny asking for approval before changing Thandi's age, with Approve and Reject buttons](docs/penny.png)
 
-The page has three tabs. **Chat** is where you ask and approve. **Team** shows everyone's monthly figures from the tax engine, with a totals row, and highlights whoever you just changed. **Activity** lists every change a person approved. Team and Activity are read-only and never call the model, so changes can only happen through the chat and its approval card.
+The app has a sidebar with three pages, and the chat follows you: on Team and Activity it sits in a panel on the right, and it is the same conversation, so you can ask on one page and carry on on another. **Chat** is where you ask and approve. **Team** shows everyone's monthly figures from the tax engine, with a totals row, and highlights whoever you just changed. **Activity** lists every change a person approved. Team and Activity are read-only and never call the model, so changes can only happen through the chat and its approval card.
 
 The chat page has two groups of suggestions:
 - **Ask Penny:** everyday questions, like *Tax numbers for everyone* (everyone's figures come from the tax engine and are shown as a table).
