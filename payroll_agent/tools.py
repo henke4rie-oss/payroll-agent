@@ -242,6 +242,9 @@ def build_toolbox(
 
         old_value = found[field_name]
         show = (lambda v: f"R{v:,.2f}") if field_name == "gross_monthly" else str
+        if new_value == old_value:  # nothing would change, so don't ask anyone to approve it
+            return {"error": f"{found['name']}'s {'salary' if field_name == 'gross_monthly' else field_name} "
+                             f"is already {show(old_value)}. Nothing to change."}
         summary = (
             f"Change {found['name']}'s {'salary' if field_name == 'gross_monthly' else field_name}: "
             f"{show(old_value)} -> {show(new_value)}. "

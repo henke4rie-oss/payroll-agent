@@ -272,3 +272,14 @@ def test_total_paye_is_unaffected():
     reply = chat(client, "what's the total paye").json()
 
     assert "total monthly PAYE is R17,658.00" in reply["message"]
+
+
+def test_a_change_to_the_same_value_is_refused_without_an_approval_card():
+    # Thandi is 30 in the demo data: "change her age to 30" must not show a 30 -> 30 card
+    client, _ = make_client([call("change_employee", action="update", name="Thandi", age=30), final("done")])
+    reply = chat(client, "change thandi's age to 30").json()
+
+    assert reply["status"] != "needs_approval"
+    assert reply.get("approval") is None
+    saved = json.loads((session_dir(client) / "employees.json").read_text())
+    assert next(p for p in saved if p["name"] == "Thandi Nkosi")["age"] == 30
