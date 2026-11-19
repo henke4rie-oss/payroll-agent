@@ -129,6 +129,12 @@ def tidy_money(text: str) -> str:
     return _RAND.sub(fix, text)
 
 
+def drop_markdown_tables(text: str) -> str:
+    """Remove markdown table lines. Used when code has already produced the table, so the figures show once."""
+    kept = [line for line in text.splitlines() if not line.strip().startswith("|")]
+    return "\n".join(kept).strip()
+
+
 def _money(value: float) -> str:
     return f"R{value:,.2f}"
 
@@ -366,7 +372,10 @@ def run_agent(
     log_timing()
 
     reply = llm.structure(history)
-    reply.message = tidy_money(reply.message)  # the model writes the words; code fixes how amounts look
+    message = reply.message
+    if toolbox.state.last_rows is not None:
+        message = drop_markdown_tables(message) or "Here are the figures."  # the code-built table replaces it
+    reply.message = tidy_money(message)  # the model writes the words; code fixes how amounts look
 
     # Code, not the model, decides these two facts: whether a human approved, and the numbers.
     status = toolbox.state.last_approval or reply.status

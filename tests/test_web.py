@@ -227,3 +227,22 @@ def test_pages_and_security_headers():
 def test_money_in_the_model_words_is_written_one_way(raw, tidy):
     from payroll_agent.agent import tidy_money
     assert tidy_money(raw) == tidy
+
+
+def test_a_table_the_model_writes_is_dropped_when_code_built_one_exists(tmp_path):
+    from payroll_agent.agent import run_agent
+    from payroll_agent.schemas import ModelReply
+    from payroll_agent.tools import build_toolbox
+
+    employees = tmp_path / "employees.json"
+    employees.write_text(json.dumps([{"name": "Thandi Nkosi", "age": 30, "gross_monthly": 25000, "sdl_exempt": False}]))
+    toolbox = build_toolbox(ask_human=lambda s: False, employees_path=employees,
+                            approved_path=tmp_path / "a.json", audit_path=tmp_path / "l.json")
+    reply = ModelReply(status="answered", message="Here you go:\n| Name | PAYE |\n|---|---|\n| Thandi | 3 381 |\nLet me know.")
+    fake = FakeLLM([call("team_pay", answer="list"), final()], reply=reply)
+
+    result = run_agent("tax numbers for everyone", fake, toolbox)
+
+    assert "|" not in result.message
+    assert result.table and result.table[0]["name"] == "Thandi Nkosi"
+    assert "Here you go" in result.message
