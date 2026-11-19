@@ -119,6 +119,8 @@ Penny is the web version of the agent: a chat page where you ask questions in pl
 .venv/bin/uvicorn web.server:app --port 8000   # then open http://localhost:8000
 ```
 
+![Penny asking for approval before changing Thandi's age, with Approve and Reject buttons](docs/penny.png)
+
 The page has two groups of suggestions:
 - **Ask Penny:** everyday questions, like *Tax numbers for everyone* (everyone's figures come from the tax engine and are shown as a table).
 - **See the safeguards:** prompts chosen to show how Penny stays safe. Each says what to watch for when you click it: *Approval* (nothing saves until you click Approve), *Typo catch* (she asks which person you meant), *Two-part question* (both parts get answered) and *Unknown person* (she never invents a number).
