@@ -129,6 +129,8 @@ Things to try:
 
 Penny is the web version of the agent: a chat page where you ask questions in plain language, and every change waits for an **Approve** or **Reject** click.
 
+**Demo video (4 min):** [Penny walkthrough on Loom](https://www.loom.com/share/c7d709d7aaef4a7d818fec42a3e56e83)
+
 ```bash
 .venv/bin/uvicorn web.server:app --port 8000   # then open http://localhost:8000
 ```
