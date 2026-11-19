@@ -29,5 +29,6 @@
   {"id": "change-declined", "turns": ["set Thandi's salary to 26000"], "contains": ["Cancelled"]},
   {"id": "age-declined", "turns": ["change lerato's age to 66"], "contains": ["Cancelled"]},
   {"id": "vague-change", "turns": ["fix sipho"], "contains": ["?"], "not_contains": ["Cancelled"]},
-  {"id": "compound-what-if", "turns": ["hi penny whats thandis tax and if she got paid 5k more what would it be then"], "contains": ["R3,381.00", "R4,681.00"]}
+  {"id": "compound-what-if", "turns": ["hi penny whats thandis tax and if she got paid 5k more what would it be then"], "contains": ["R3,381.00", "R4,681.00"]},
+  {"id": "total-payroll", "turns": ["what's the total payroll"], "contains": ["R124,500.00", "R106,053.52"]}
 ]

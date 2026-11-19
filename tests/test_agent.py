@@ -315,8 +315,8 @@ def test_unknown_figure_goes_back_to_the_model(tmp_path):
 
 
 def test_team_questions_are_answered_from_the_arguments(tmp_path):
-    def ask(answer, figure="all"):
-        return _ask(tmp_path, "team?", call("team_pay", answer=answer, figure=figure), final()).message
+    def ask(answer, figure="all", question="team?"):
+        return _ask(tmp_path, question, call("team_pay", answer=answer, figure=figure), final()).message
 
     assert ask("count") == "There are 3 employees."
     assert ask("highest", "gross") == "Sipho Dlamini earns the most: R42,000.00 a month."
@@ -328,7 +328,7 @@ def test_team_questions_are_answered_from_the_arguments(tmp_path):
     assert ask("highest", "sdl") == "Sipho Dlamini has the highest SDL (paid by the employer): R420.00 a month."
     assert ask("highest", "age") == "Lerato Mokoena is the oldest: 64."
     assert ask("lowest", "age") == "Thandi Nkosi is the youngest: 30."
-    assert ask("total", "paye") == "For 3 employees, total monthly PAYE is R11,685.75."
+    assert ask("total", "paye", "total paye?") == "For 3 employees, total monthly PAYE is R11,685.75."
     assert ask("total").startswith("Monthly payroll for 3 employees: gross R75,000.00, PAYE R11,685.75")
 
 

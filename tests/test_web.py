@@ -246,3 +246,29 @@ def test_a_table_the_model_writes_is_dropped_when_code_built_one_exists(tmp_path
     assert "|" not in result.message
     assert result.table and result.table[0]["name"] == "Thandi Nkosi"
     assert "Here you go" in result.message
+
+
+def test_total_payroll_with_no_figure_named_shows_every_total():
+    # the model picked "net" this time; code replaces it because the question names no figure
+    client, _ = make_client([call("team_pay", answer="total", figure="net")])
+    reply = chat(client, "What's the total payroll?").json()
+
+    for word in ("gross", "PAYE", "UIF", "net pay", "SDL"):
+        assert word in reply["message"]
+    assert any("showing every total" in line for line in reply["trace"])
+
+
+def test_a_total_that_names_a_figure_stays_a_single_figure():
+    client, _ = make_client([call("team_pay", answer="total", figure="net")])
+    reply = chat(client, "What's the total net pay?").json()
+
+    assert reply["message"].startswith("For 5 employees, total monthly net pay is R")
+    assert "gross" not in reply["message"]
+    assert not any("showing every total" in line for line in reply["trace"])
+
+
+def test_total_paye_is_unaffected():
+    client, _ = make_client([call("team_pay", answer="total", figure="paye")])
+    reply = chat(client, "what's the total paye").json()
+
+    assert "total monthly PAYE is R17,658.00" in reply["message"]

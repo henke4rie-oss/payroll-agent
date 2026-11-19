@@ -52,6 +52,11 @@ GREETING_REPLY = (
 # going out after the first answer and silently dropping the rest of the question.
 MORE_TO_DO = re.compile(r"\b(?:and|also|plus|then)\s+(?:if|what|how|who|would|could)\b|\?.+\?", re.IGNORECASE)
 
+# Names of a figure. "Total payroll" names none, so the model's pick (gross one run, net the next) is replaced
+# by every total, and the reply always reads the same. "Total net pay" or "total paye" stays a single figure.
+FIGURE_WORDS = re.compile(
+    r"\b(?:gross|net|take[- ]?home|paye|tax\w*|uif|sdl|salar\w*|wage\w*|earn\w*|cost\w*)\b", re.IGNORECASE)
+
 # Words that suggest the user wants to change data, so the change_employee tool must be offered.
 # Hiding it is only a token saving: if this misses, the model says it can't, and approval is enforced in the tool.
 WRITE_INTENT = re.compile(
@@ -75,6 +80,15 @@ class ApprovalNeeded(Exception):
         super().__init__(summary)
         self.summary = summary
         self.call: Optional[ToolCall] = None
+
+
+def _with_all_totals(call: ToolCall, question: str, log: Callable[[str], None]) -> ToolCall:
+    """A team total with no figure named in the question shows every total, whatever the model picked."""
+    if (call.name == "team_pay" and call.args.get("answer") == "total"
+            and call.args.get("figure", "all") != "all" and not FIGURE_WORDS.search(question)):
+        log("code: no figure named, so showing every total")
+        call.args = {**call.args, "figure": "all"}
+    return call
 
 
 def run_tool(toolbox: Toolbox, call: ToolCall) -> dict:
@@ -223,7 +237,8 @@ def _team_reply(result: dict) -> Optional[str]:
         people = f"{count} employee{'' if count == 1 else 's'}"
         if result["figure"] == "all":
             return (f"Monthly payroll for {people}: gross {_money(totals['gross'])}, PAYE {_money(totals['paye'])}, "
-                    f"employee UIF {_money(totals['uif'])}, net pay {_money(totals['net'])}.")
+                    f"employee UIF {_money(totals['uif'])} and net pay {_money(totals['net'])}. "
+                    f"The employer also pays SDL of {_money(totals.get('sdl', 0))}.")
         figure = result["figure"]
         return f"For {people}, total monthly {LABELS[figure]} is {_money(totals[figure])}."
     return None  # "list": the model reads the data itself (filters, "list everyone")
@@ -338,6 +353,7 @@ def run_agent(
         call_ids = []
         for call in turn.tool_calls:
             log(f"step {step}: model called {call.name}({call.args})")
+            call = _with_all_totals(call, question, log)
             tool_started = time.perf_counter()
             result = run_tool(toolbox, call)
             tool_seconds += time.perf_counter() - tool_started
