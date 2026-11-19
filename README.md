@@ -151,13 +151,14 @@ The model never sees or decides the approval. The validation, exact-name rules a
 python -m pytest
 ```
 
-The 93 tests cover the tax calculations (expected values worked out by hand from the SARS table), every tool, the approval gates, typo and validation edge cases, the step limit, unknown tool requests and the retry logic. They use a fake model, so they do not test live model behaviour. That is what the eval is for.
+The 129 tests cover the tax calculations (expected values worked out by hand from the SARS table), every tool, the approval gates, typo and validation edge cases, the step limit, unknown tool requests and the retry logic. They use a fake model, so they do not test live model behaviour. That is what the eval is for.
 
 ## Known limitations
 
 - **The live eval is not perfect, and it varies between runs.** The latest full runs scored 27 and 28 of 31 (29/30 on the older 30-case set before the redesign). `take-home` and `earn` fail every run: they return the full payslip where one figure was asked for. `tax-numbers` and `filter-age` pass or fail depending on the run. One or two cases change from run to run, because the model (`gpt-oss-20b`) sometimes leaves `fields` empty. In the latest run the failing cases were `take-home` and `earn`: both returned the full payslip instead of the single figure asked for. The figures were correct, and no case invented an amount.
 - **That variation is the model, not the rate limit.** Groq's free-tier rate limit returned some 429 responses during eval runs, but the retries absorbed them and they caused no failures.
 - **The redesign did not raise the score.** It removed the phrase-matching code, fixed follow-up questions (such as "and sipho khumalo?" after a PAYE question) and made the behaviour measurable, at about the same accuracy.
+- **Model and provider history.** Before the redesign, a regex layer rewrote the user's wording before it reached the model. It did not fix the misses. Gemini's free tier hit its usage limits before testing could start. NVIDIA's free models answered, but some replies took over a minute. Groq was the fastest and most consistent free option, so it is the current provider. A stronger model may close the gap on the two consistent failures, but this has not been tested yet.
 - The agent keeps the last 4 exchanges of the current CLI session; restarting clears it.
 - Employees are a small fake JSON file, and approved edits are written straight to it (no database, no concurrent-edit protection).
 - Age is editable for demo purposes. A real system would derive age from the ID number or birthdate.
