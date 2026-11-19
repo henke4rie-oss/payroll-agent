@@ -90,6 +90,20 @@ Under these three sit the small functions in `tools.py` (lookup, payslip, update
 - **Step limit and retries.** A confused model can't loop forever, and temporary API errors (rate limits, overload, timeouts) are retried with a growing wait.
 - **Layers are separate files.** `engine.py` (tax maths), `store.py` (data), `tools.py` (what the agent can do), `agent.py` (the loop), `llm.py` (the only file that knows about the model provider). Tests use a scripted fake model, so they need no API key.
 
+## Stack and trade-offs
+
+Each choice below is what I used, and what it costs.
+
+- **Python.** The language I know best, with good libraries for tax maths, validation and web APIs. *Cost:* it is slower than compiled languages, which doesn't matter at payroll scale.
+- **`Decimal` for money.** Exact decimal arithmetic with ROUND_HALF_UP, so R0.01 errors don't creep into payslips. *Cost:* more verbose than floats, and every value must be converted on the way in and out.
+- **Pydantic for tool arguments and API data.** Each tool's arguments are validated before any code runs. *Cost:* another library to learn, and strict schemas can reject a request the model meant well.
+- **Groq with `gpt-oss-20b`, through the OpenAI-compatible client.** Fast and consistent, with a free tier, so testing costs nothing. The `openai` client only needs a different base URL to switch provider. *Cost:* the free tier has rate limits, and a 20B model misses some phrasings (see Known limitations). Depending on one provider is a risk.
+- **Structured tool calling, not free-text parsing.** The model picks a tool and fills in arguments, and code decides what happens. *Cost:* it needs a model that supports tool calls reliably. A regex layer was tried first and did not work.
+- **No agent framework (LangChain and similar).** I described the problem to an AI coding assistant in detail, then tested and reviewed what it built. The loop, retries and approval gate live in `agent.py` (about 400 lines), so they're easy to find. *Cost:* I wrote less of the code myself, I rely on my own retries and logging instead of a framework's, and I need to understand the code well enough to explain it.
+- **FastAPI and uvicorn for Penny.** Simple to write, with automatic request validation and a fast server. *Cost:* another layer to learn, and the web version is single-user.
+- **JSON files for employees and the audit log.** Easy to read and to test, with nothing to install. *Cost:* no concurrent writes, no queries, and no protection if two people edit at once. This is the first thing to replace (see What would break first at scale).
+- **Tests with a fake model (pytest).** The 129 tests run without an API key and are fast and repeatable. *Cost:* they don't test real model behaviour, which is what the live eval is for.
+
 ## Setup
 
 1. `python -m venv .venv` and activate it (Windows: `.venv\Scripts\activate`)
