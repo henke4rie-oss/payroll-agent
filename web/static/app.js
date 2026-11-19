@@ -1,14 +1,36 @@
 // Penny's chat page. Plain ES module, no build step.
 // Safety rule: text from the model is only ever added with textContent / text nodes, never as HTML.
 
-const SUGGESTIONS = [
-  "Hi Penny",
+// Everyday questions, and "safeguards": prompts chosen to show how Penny stays safe.
+// A safeguard chip says what it proves (tag) and what to watch for before the question is sent.
+const EVERYDAY = [
   "Tax numbers for everyone",
   "What is Thandi Nkosi's net pay?",
-  "Change Thandy's age to 66",
-  "Change Thandi Nkosi's age to 66",
   "What would Sipho Khumalo's pay be at 66?",
   "What's the total payroll?",
+];
+
+const SAFEGUARDS = [
+  {
+    tag: "Approval",
+    text: "Change Thandi Nkosi's age to 66",
+    watch: "Nothing is saved until you click Approve. Try Reject too.",
+  },
+  {
+    tag: "Typo catch",
+    text: "Change Thandy's age to 66",
+    watch: "Penny asks which person you meant instead of guessing.",
+  },
+  {
+    tag: "Two-part question",
+    text: "What's Thandi's tax, and if she got paid 5k more what would it be?",
+    watch: "Both parts get answered, with every figure from the tax engine.",
+  },
+  {
+    tag: "Unknown person",
+    text: "What's Bob's salary?",
+    watch: "Penny says she can't find Bob, and never invents a number.",
+  },
 ];
 
 const WELCOME = "Ask me about pay or tax, or pick a suggestion below.";
@@ -368,11 +390,47 @@ function applyTheme(theme) {
   themeBtn.setAttribute("aria-label", toLight ? "Switch to light theme" : "Switch to dark theme");
 }
 
-for (const text of SUGGESTIONS) {
-  const chip = el("button", "chip", text);
+// A short note in the chat (not sent to the model) saying what a safeguard proves and what to watch for.
+function addNote(tag, watch) {
+  const row = el("div", "msg msg-note");
+  const text = el("p", "note-text");
+  text.append(el("strong", "", `Safeguard: ${tag}. `), document.createTextNode(`Watch for: ${watch}`));
+  row.append(text);
+  messagesEl.append(row);
+  scrollToEnd();
+}
+
+function chipGroup(id, title) {
+  const group = el("div", "chip-group");
+  group.setAttribute("role", "group");
+  group.setAttribute("aria-labelledby", id);
+  const heading = el("p", "chips-heading", title);
+  heading.id = id;
+  const row = el("div", "chip-row");
+  group.append(heading, row);
+  chipsEl.append(group);
+  return row;
+}
+
+const everydayRow = chipGroup("chips-everyday", "Ask Penny");
+for (const text of EVERYDAY) {
+  const chip = el("button", "chip chip-everyday", text);
   chip.type = "button";
   chip.addEventListener("click", () => send(text));
-  chipsEl.append(chip);
+  everydayRow.append(chip);
+}
+
+const safeguardRow = chipGroup("chips-safeguards", "See the safeguards");
+for (const { tag, text, watch } of SAFEGUARDS) {
+  const chip = el("button", "chip chip-safeguard");
+  chip.type = "button";
+  chip.append(el("span", "chip-tag", tag), document.createTextNode(text)); // the tag is real text, not just colour
+  chip.addEventListener("click", () => {
+    if (busy) return;
+    addNote(tag, watch);
+    send(text);
+  });
+  safeguardRow.append(chip);
 }
 
 form.addEventListener("submit", (event) => {
